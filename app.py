@@ -26,6 +26,7 @@ if input_option == "Manual Input":
         "One-Sample Z-Test",
         "Two-Sample Z-Test",
         "One-Way ANOVA",
+        "Chi-Square Test of Independence",
         "Pearson Correlation",
         "Levene's Variance Test"
     ])
@@ -115,6 +116,20 @@ if input_option == "Manual Input":
             res = run_anova(g1, g2, g3)
             st.write(f"**F-Statistic:** {res['f_stat']:.4f} | **p-Value:** {res['p_value']:.4f}")
             st.info(res["interpretation"])
+
+    elif test_type == "Chi-Square Test of Independence":
+        st.markdown("Enter your observed frequencies table matrix (rows separated by line breaks, columns by commas):")
+        matrix_input = st.text_area("Contingency Table Matrix:", "10, 20\n30, 40")
+        
+        if st.button("Run Chi-Square Test") and matrix_input:
+            try:
+                rows = matrix_input.strip().split("\n")
+                table = [[float(x.strip()) for x in row.split(",") if x.strip() != ""] for row in rows]
+                res = run_chi_square(table)
+                st.write(f"**Chi2-Statistic:** {res['chi2_stat']:.4f} | **p-Value:** {res['p_value']:.4f} | **Degrees of Freedom:** {res['dof']}")
+                st.info(res["interpretation"])
+            except Exception as e:
+                st.error(f"Error processing matrix: {e}")
 
 # ---------------------------------------------------------
 # CSV UPLOAD MODE
