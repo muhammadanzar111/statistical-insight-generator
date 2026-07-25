@@ -1,37 +1,12 @@
 ﻿def generate_narrative(stats):
-    """Generates a rule-based narrative summary from calculated descriptive metrics."""
     if not stats:
-        return "No data available to generate narrative insights."
+        return "No data available for analysis."
 
-    mean = stats["mean"]
-    median = stats["median"]
-    std = stats["std"]
-    count = stats["count"]
-    outliers = stats["outliers"]
+    mode_str = f"{stats['mode']:.2f}" if isinstance(stats.get('mode'), (int, float)) else str(stats.get('mode', 'N/A'))
 
-    if abs(mean - median) < (0.1 * std if std > 0 else 0.1):
-        symmetry_text = "The data appears roughly **symmetric**, as the mean and median are nearly identical."
-    elif mean > median:
-        symmetry_text = "The dataset is **right-skewed (positively skewed)**, indicating a tail of higher values pulling the mean above the median."
-    else:
-        symmetry_text = "The dataset is **left-skewed (negatively skewed)**, indicating a tail of lower values pulling the mean below the median."
-
-    cv = (std / mean * 100) if mean != 0 else 0
-    if cv < 15:
-        variability_text = "Data points show **low variability**, clustered closely around the average."
-    elif cv < 30:
-        variability_text = "Data exhibits **moderate variability** relative to the mean."
-    else:
-        variability_text = "Data exhibits **high dispersion**, meaning values are widely spread out."
-
-    if outliers:
-        outlier_text = f"Anomalies detected: **{len(outliers)} outlier(s)** found using the 1.5 × IQR threshold ({', '.join([str(o) for o in outliers])})."
-    else:
-        outlier_text = "No severe statistical anomalies or outliers were identified."
-
-    return (
-        f"Based on **N = {count}** observations:\n\n"
-        f"• **Distribution Shape:** {symmetry_text}\n"
-        f"• **Spread & Consistency:** {variability_text} (Std Dev = {std:.2f}).\n"
-        f"• **Outlier Status:** {outlier_text}"
-    )
+    narrative = f"""
+- **Central Tendency:** The dataset has a mean of **{stats.get('mean', 0.0):.2f}**, a median of **{stats.get('median', 0.0):.2f}**, and a mode of **{mode_str}**.
+- **Variability & Dispersion:** The standard deviation is **{stats.get('std', 0.0):.2f}** with a sample variance of **{stats.get('variance', 0.0):.2f}**, indicating the overall spread of values around the mean.
+- **Range & Outliers:** Values range from **{stats.get('min', 0.0):.2f}** to **{stats.get('max', 0.0):.2f}** (Total Range: **{stats.get('range', 0.0):.2f}**). There are **{len(stats.get('outliers', []))}** potential outlier(s) detected using the $1.5 \\times \\text{{IQR}}$ rule.
+    """
+    return narrative
