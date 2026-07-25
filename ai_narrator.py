@@ -2,7 +2,8 @@
     if not stats:
         return "No data available for analysis."
 
-    mode_str = f"{stats['mode']:.2f}" if isinstance(stats.get('mode'), (int, float)) else str(stats.get('mode', 'N/A'))
+    mode_val = stats.get('mode', 'N/A')
+    mode_str = f"{mode_val:.2f}" if isinstance(mode_val, (int, float)) else str(mode_val)
 
     narrative = f"""
 - **Central Tendency:** The dataset has a mean of **{stats.get('mean', 0.0):.2f}**, a median of **{stats.get('median', 0.0):.2f}**, and a mode of **{mode_str}**.

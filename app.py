@@ -2,7 +2,8 @@ import streamlit as st
 import pandas as pd
 from stats_engine import (
     calculate_stats, run_one_sample_ttest, run_independent_ttest,
-    run_paired_ttest, run_anova, run_chi_square, run_correlation, run_levene_test
+    run_paired_ttest, run_one_sample_ztest, run_two_sample_ztest,
+    run_anova, run_chi_square, run_correlation, run_levene_test
 )
 from ai_narrator import generate_narrative
 
@@ -22,6 +23,8 @@ if input_option == "Manual Input":
         "One-Sample t-Test",
         "Independent Two-Sample t-Test",
         "Paired (Dependent) t-Test",
+        "One-Sample Z-Test",
+        "Two-Sample Z-Test",
         "One-Way ANOVA",
         "Pearson Correlation",
         "Levene's Variance Test"
@@ -37,8 +40,6 @@ if input_option == "Manual Input":
             
             if stats_res:
                 st.subheader("📈 Descriptive Statistics")
-                
-                # Row 1: Central Tendency
                 c1, c2, c3, c4 = st.columns(4)
                 c1.metric("Sample Size (N)", stats_res["count"])
                 c2.metric("Mean", f"{stats_res['mean']:.2f}")
@@ -46,7 +47,6 @@ if input_option == "Manual Input":
                 mode_val = f"{stats_res['mode']:.2f}" if isinstance(stats_res['mode'], (int, float)) else stats_res['mode']
                 c4.metric("Mode", mode_val)
 
-                # Row 2: Dispersion & Variance
                 c5, c6, c7, c8 = st.columns(4)
                 c5.metric("Std Dev", f"{stats_res['std']:.2f}")
                 c6.metric("Variance", f"{stats_res['variance']:.2f}")
@@ -65,7 +65,18 @@ if input_option == "Manual Input":
             st.write(f"**t-Statistic:** {res['t_stat']:.4f} | **p-Value:** {res['p_value']:.4f}")
             st.info(res["interpretation"])
 
-    elif test_type in ["Independent Two-Sample t-Test", "Paired (Dependent) t-Test", "Pearson Correlation", "Levene's Variance Test"]:
+    elif test_type == "One-Sample Z-Test":
+        raw = st.text_area("Enter Sample Values (comma-separated):", "12, 15, 18, 22, 30, 45")
+        mu_0 = st.number_input("Hypothesized Population Mean (μ₀):", value=20.0)
+        sigma_input = st.number_input("Population Std Dev (σ) [Optional, 0 = sample std]:", value=0.0)
+        sigma = sigma_input if sigma_input > 0 else None
+        if st.button("Run One-Sample Z-Test") and raw:
+            data = [float(x.strip()) for x in raw.split(",") if x.strip() != ""]
+            res = run_one_sample_ztest(data, mu_0, sigma)
+            st.write(f"**Z-Statistic:** {res['z_stat']:.4f} | **p-Value:** {res['p_value']:.4f}")
+            st.info(res["interpretation"])
+
+    elif test_type in ["Independent Two-Sample t-Test", "Paired (Dependent) t-Test", "Two-Sample Z-Test", "Pearson Correlation", "Levene's Variance Test"]:
         col_a, col_b = st.columns(2)
         with col_a:
             raw_a = st.text_area("Group / Variable A (comma-separated):", "10, 15, 20, 25, 30")
@@ -80,13 +91,15 @@ if input_option == "Manual Input":
                 res = run_independent_ttest(g1, g2)
             elif test_type == "Paired (Dependent) t-Test":
                 res = run_paired_ttest(g1, g2)
+            elif test_type == "Two-Sample Z-Test":
+                res = run_two_sample_ztest(g1, g2)
             elif test_type == "Pearson Correlation":
                 res = run_correlation(g1, g2)
                 st.write(f"**Pearson r:** {res['corr']:.4f}")
             elif test_type == "Levene's Variance Test":
                 res = run_levene_test(g1, g2)
 
-            stat_key = "t_stat" if "t_stat" in res else ("stat" if "stat" in res else "corr")
+            stat_key = "t_stat" if "t_stat" in res else ("z_stat" if "z_stat" in res else ("stat" if "stat" in res else "corr"))
             st.write(f"**Test Statistic:** {res.get(stat_key, 0.0):.4f} | **p-Value:** {res['p_value']:.4f}")
             st.info(res["interpretation"])
 
@@ -120,6 +133,8 @@ elif input_option == "CSV Upload":
             "One-Sample t-Test",
             "Independent Two-Sample t-Test",
             "Paired (Dependent) t-Test",
+            "One-Sample Z-Test",
+            "Two-Sample Z-Test",
             "One-Way ANOVA",
             "Chi-Square Test of Independence",
             "Pearson Correlation",
@@ -158,12 +173,30 @@ elif input_option == "CSV Upload":
                 st.write(f"**t-Stat:** {res['t_stat']:.4f} | **p-Value:** {res['p_value']:.4f}")
                 st.info(res["interpretation"])
 
+        elif test_type == "One-Sample Z-Test" and num_cols:
+            col = st.selectbox("Select Column", num_cols)
+            mu_0 = st.number_input("Hypothesized Mean (μ₀)", value=0.0)
+            sigma_input = st.number_input("Population Std Dev (σ) [Optional, 0 = sample std]:", value=0.0)
+            sigma = sigma_input if sigma_input > 0 else None
+            if st.button("Run One-Sample Z-Test"):
+                res = run_one_sample_ztest(df[col].dropna().tolist(), mu_0, sigma)
+                st.write(f"**Z-Stat:** {res['z_stat']:.4f} | **p-Value:** {res['p_value']:.4f}")
+                st.info(res["interpretation"])
+
         elif test_type == "Independent Two-Sample t-Test" and len(num_cols) >= 2:
             col1 = st.selectbox("Group 1 Column", num_cols, index=0)
             col2 = st.selectbox("Group 2 Column", num_cols, index=1)
             if st.button("Run Independent t-Test"):
                 res = run_independent_ttest(df[col1].dropna().tolist(), df[col2].dropna().tolist())
                 st.write(f"**t-Stat:** {res['t_stat']:.4f} | **p-Value:** {res['p_value']:.4f}")
+                st.info(res["interpretation"])
+
+        elif test_type == "Two-Sample Z-Test" and len(num_cols) >= 2:
+            col1 = st.selectbox("Group 1 Column", num_cols, index=0)
+            col2 = st.selectbox("Group 2 Column", num_cols, index=1)
+            if st.button("Run Two-Sample Z-Test"):
+                res = run_two_sample_ztest(df[col1].dropna().tolist(), df[col2].dropna().tolist())
+                st.write(f"**Z-Stat:** {res['z_stat']:.4f} | **p-Value:** {res['p_value']:.4f}")
                 st.info(res["interpretation"])
 
         elif test_type == "Paired (Dependent) t-Test" and len(num_cols) >= 2:
